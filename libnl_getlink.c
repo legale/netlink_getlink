@@ -16,14 +16,6 @@
 
 
 
-
-/* FILELINE macro */
-#define STR(x) #x
-#define STRINGIFY(x) STR(x)
-#define FILELINE __FILE__ ":" STRINGIFY(__LINE__)
-
-
-
 static void parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, unsigned len) {
     /* loop over all rtattributes */
     while (RTA_OK(rta, len) && max--) {
@@ -109,7 +101,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     /* send message */
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
     if (status < 0){
-        fprintf(stderr, FILELINE " error: send %ld %d\n", status, errno);
+        fprintf(stderr,"error: send %ld %d\n", status, errno);
         return status;
     }
 
@@ -126,7 +118,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
          */
         status = recv(sd, buf, expected_buf_size, MSG_TRUNC | MSG_PEEK);
         if (status < 0) {
-            fprintf(stderr, FILELINE " error: recv %ld %d\n", status, errno);
+            fprintf(stderr,  "error: recv %ld %d\n", status, errno);
             free(buf);
             break; // there is no messages left to receive
         }
@@ -136,7 +128,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             expected_buf_size = status; /* this is real size */
             buf = realloc(buf, expected_buf_size); /* increase buffer size */
             status = recv(sd, buf, expected_buf_size, 0); /* now we get the full message */
-            if (status < 0) fprintf(stderr, FILELINE " error: recv %ld %d\n", status, errno);
+            if (status < 0) fprintf(stderr,  "error: recv %ld %d\n", status, errno);
         }
 
         nl_hdr = (struct nlmsghdr *) buf;
