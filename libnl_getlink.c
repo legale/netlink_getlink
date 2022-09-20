@@ -15,7 +15,6 @@
 #include <stdlib.h>
 
 
-
 static void parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, unsigned len) {
     /* loop over all rtattributes */
     while (RTA_OK(rta, len) && max--) {
@@ -38,7 +37,7 @@ static ssize_t parse_nlbuf(void *buf, size_t buf_size, nlcache *cache) {
     len -= msg_len; /* count message length left */
     /* this is very first rtnetlink attribute */
     struct rtattr *rta = p;
-    parse_rtattr((struct rtattr **)&cache->tb, IFLA_MAX, rta, len); /* fill tb attribute buffer */
+    parse_rtattr((struct rtattr **) &cache->tb, IFLA_MAX, rta, len); /* fill tb attribute buffer */
 
     return hdr->nlmsg_len;
 }
@@ -70,10 +69,9 @@ int addattr32(struct nlmsghdr *n, int maxlen, int type, __u32 data) {
 }
 
 
-
-void free_netdev_list(netdev_item_s *list){
+void free_netdev_list(netdev_item_s *list) {
     netdev_item_s *item, *tmp;
-    list_for_each_entry_safe(item, tmp, &list->list, list){
+    list_for_each_entry_safe(item, tmp, &list->list, list) {
         free(item);
     }
 }
@@ -100,8 +98,8 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     int sd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE); /* open socket */
     /* send message */
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
-    if (status < 0){
-        fprintf(stderr,"error: send %ld %d\n", status, errno);
+    if (status < 0) {
+        fprintf(stderr, "error: send %ld %d\n", status, errno);
         return status;
     }
 
@@ -118,7 +116,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
          */
         status = recv(sd, buf, expected_buf_size, MSG_TRUNC | MSG_PEEK);
         if (status < 0) {
-            fprintf(stderr,  "error: recv %ld %d\n", status, errno);
+            fprintf(stderr, "error: recv %ld %d\n", status, errno);
             free(buf);
             break; // there is no messages left to receive
         }
@@ -128,7 +126,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             expected_buf_size = status; /* this is real size */
             buf = realloc(buf, expected_buf_size); /* increase buffer size */
             status = recv(sd, buf, expected_buf_size, 0); /* now we get the full message */
-            if (status < 0) fprintf(stderr,  "error: recv %ld %d\n", status, errno);
+            if (status < 0) fprintf(stderr, "error: recv %ld %d\n", status, errno);
         }
 
         nl_hdr = (struct nlmsghdr *) buf;
@@ -149,25 +147,25 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             chunk_len -= nlmsg_len;
             p += nlmsg_len;
             struct ifinfomsg *msg = NLMSG_DATA(cache.nl_hdr); /* macro to get a ptr right after header */
-            if(!dev) dev = malloc(sizeof(netdev_item_s));
+            if (!dev) dev = malloc(sizeof(netdev_item_s));
             dev->index = msg->ifi_index;
 
 
-            struct rtattr **tb = (struct rtattr **)&cache.tb;
+            struct rtattr **tb = (struct rtattr **) &cache.tb;
 
             if (tb[IFLA_IFNAME]) {
-                strcpy(dev->name, (char *)RTA_DATA(tb[IFLA_IFNAME]));
+                strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
             }
 
             /* mac */
             if (tb[IFLA_ADDRESS]) {
-                memcpy((void *)&dev->ll_addr, RTA_DATA(tb[IFLA_ADDRESS]), IFHWADDRLEN);
+                memcpy((void *) &dev->ll_addr, RTA_DATA(tb[IFLA_ADDRESS]), IFHWADDRLEN);
             }
 
-            if(dev) list_add_tail(&dev->list, &list->list); //append dev to list tail
+            if (dev) list_add_tail(&dev->list, &list->list); //append dev to list tail
 
-            if(name){
-                if(memcmp(dev->name, name, name_len) == 0){
+            if (name) {
+                if (memcmp(dev->name, name, name_len) == 0) {
 
                 }
             }
