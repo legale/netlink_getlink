@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-#ifndef __LIST_H__
-#define __LIST_H__ 1
+#ifndef _LINUX_LIST_H_
+#define _LINUX_LIST_H_ 1
 /* List and hash list stuff from kernel */
 
 #include <stddef.h>
@@ -131,4 +131,4 @@ static inline int list_empty(const struct list_head *head)
 	     pos;							\
 	     pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), member))
 
-#endif /* __LIST_H__ */
+#endif /* _LINUX_LIST_H_ */
