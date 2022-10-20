@@ -126,7 +126,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             expected_buf_size = status; /* this is real size */
             buf = realloc(buf, expected_buf_size); /* increase buffer size */
             status = recv(sd, buf, expected_buf_size, 0); /* now we get the full message */
-            if (status < 0) fprintf(stderr, "error: recv %ld %d\n", status, errno);
+            if (status < 0) fprintf(stderr, "error: recv %zd %d\n", status, errno);
         }
 
         nl_hdr = (struct nlmsghdr *) buf;
