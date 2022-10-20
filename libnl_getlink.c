@@ -99,11 +99,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     /* send message */
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
     if (status < 0) {
-#if UINTPTR_MAX == UINT64_MAX
-        fprintf(stderr, "error: send %ld %d\n", status, errno);
-#else
-        fprintf(stderr, "error: send %lld %d\n", status, errno);
-#endif
+        fprintf(stderr, "error: send %zd %d\n", status, errno);
         return status;
     }
 
@@ -120,11 +116,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
          */
         status = recv(sd, buf, expected_buf_size, MSG_TRUNC | MSG_PEEK);
         if (status < 0) {
-#if UINTPTR_MAX == UINT64_MAX
-            fprintf(stderr, "error: recv %ld %d\n", status, errno);
-#else
-            fprintf(stderr, "error: recv %lld %d\n", status, errno);
-#endif
+            fprintf(stderr, "error: recv %zd %d\n", status, errno);
             free(buf);
             break; // there is no messages left to receive
         }
