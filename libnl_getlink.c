@@ -178,8 +178,6 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
                     memcpy(dev->kind, RTA_DATA(linkinfo[IFLA_INFO_KIND]), IFNAMSIZ);
                 }
             }
-            /* IFLA_WIRELESS flag */
-            dev->wireless = tb[IFLA_WIRELESS];
 
             if (tb[IFLA_IFNAME]) {
                 strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
