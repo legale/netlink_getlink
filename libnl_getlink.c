@@ -14,13 +14,31 @@
 #include <string.h>
 #include <stdlib.h>
 
+#define parse_rtattr_nested(tb, max, rta) \
+	(parse_rtattr((tb), (max), RTA_DATA(rta), RTA_PAYLOAD(rta)))
 
-static void parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, unsigned len) {
-    /* loop over all rtattributes */
-    while (RTA_OK(rta, len) && max--) {
-        tb[rta->rta_type] = rta; /* store attribute ptr to the tb array */
-        rta = RTA_NEXT(rta, len); /* special rtnetlink.h macro to get next netlink route attribute ptr */
-    }
+
+static int parse_rtattr_flags(struct rtattr *tb[], int max, struct rtattr *rta,
+		       int len, unsigned short flags)
+{
+	unsigned short type;
+
+	memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
+	while (RTA_OK(rta, len)) {
+		type = rta->rta_type & ~flags;
+		if ((type <= max) && (!tb[type]))
+			tb[type] = rta;
+		rta = RTA_NEXT(rta, len);
+	}
+	if (len)
+		fprintf(stderr, "!!!Deficit %d, rta_len=%d\n",
+			len, rta->rta_len);
+	return 0;
+}
+
+static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
+{
+	return parse_rtattr_flags(tb, max, rta, len, 0);
 }
 
 
@@ -150,8 +168,19 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             if (!dev) dev = malloc(sizeof(netdev_item_s));
             dev->index = msg->ifi_index;
 
-
             struct rtattr **tb = (struct rtattr **) &cache.tb;
+
+            if (tb[IFLA_LINKINFO]) {
+                struct rtattr *linkinfo[IFLA_INFO_MAX+1];
+                parse_rtattr_nested(linkinfo, IFLA_INFO_MAX, tb[IFLA_LINKINFO]);
+                printf("ptr: %lu\n", (size_t)linkinfo[IFLA_INFO_KIND]);
+
+                if(linkinfo[IFLA_INFO_KIND]){
+                    dev->kind = (char *)RTA_DATA(linkinfo[IFLA_INFO_KIND]);
+                } else {
+                    dev->kind = NULL;
+                }
+            }
 
             if (tb[IFLA_IFNAME]) {
                 strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
