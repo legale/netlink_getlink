@@ -16,7 +16,7 @@
 
 typedef struct netdev_item {
     int index;
-    char *kind;
+    char kind[IFNAMSIZ]; /* IFLA_INFO_KIND nested in rtattr IFLA_LINKINFO  */
     char name[IFNAMSIZ];
     uint8_t ll_addr[IFHWADDRLEN];
     struct list_head list;

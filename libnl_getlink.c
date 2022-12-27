@@ -165,8 +165,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             chunk_len -= nlmsg_len;
             p += nlmsg_len;
             struct ifinfomsg *msg = NLMSG_DATA(cache.nl_hdr); /* macro to get a ptr right after header */
-            if (!dev) dev = malloc(sizeof(netdev_item_s));
-            dev->kind = NULL;
+            if (!dev) dev = calloc(1, sizeof(netdev_item_s));
             dev->index = msg->ifi_index;
 
             struct rtattr **tb = (struct rtattr **) &cache.tb;
@@ -176,7 +175,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
                 parse_rtattr_nested(linkinfo, IFLA_INFO_MAX, tb[IFLA_LINKINFO]);
 
                 if(linkinfo[IFLA_INFO_KIND]){
-                    dev->kind = (char *)RTA_DATA(linkinfo[IFLA_INFO_KIND]);
+                    memcpy(dev->kind, RTA_DATA(linkinfo[IFLA_INFO_KIND]), IFNAMSIZ);
                 }
             }
 
