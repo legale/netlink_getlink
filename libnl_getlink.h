@@ -3,6 +3,7 @@
 
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <net/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -16,6 +17,7 @@
 
 typedef struct netdev_item {
     int index;
+    bool wireless;   /* rtattr IFLA_WIRELESS flag */
     char kind[IFNAMSIZ]; /* IFLA_INFO_KIND nested in rtattr IFLA_LINKINFO  */
     char name[IFNAMSIZ];
     uint8_t ll_addr[IFHWADDRLEN];
