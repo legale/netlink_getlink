@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <net/if.h>
+#include <net/if_arp.h>
 #include <linux/types.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -169,6 +170,11 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             dev->index = msg->ifi_index;
 
             struct rtattr **tb = (struct rtattr **) &cache.tb;
+
+            /* skip loopback device and other non ARPHRD_ETHER */
+            if(msg->ifi_type != ARPHRD_ETHER){
+                continue;
+            }
 
             if (tb[IFLA_LINKINFO]) {
                 struct rtattr *linkinfo[IFLA_INFO_MAX+1];
