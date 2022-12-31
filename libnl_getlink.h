@@ -17,6 +17,7 @@
 
 typedef struct netdev_item {
     int index;
+    int master; /* master device */
     char kind[IFNAMSIZ]; /* IFLA_INFO_KIND nested in rtattr IFLA_LINKINFO  */
     char name[IFNAMSIZ];
     uint8_t ll_addr[IFHWADDRLEN];
@@ -35,7 +36,7 @@ typedef struct nlcache {
 
 
 int get_netdev(char *name, size_t name_len, netdev_item_s *list);
-
+netdev_item_s *ll_get_by_index(netdev_item_s list, unsigned int index);
 void free_netdev_list(netdev_item_s *list);
 
 #endif //NETLINK_GET_ADDR_LIBNL_GETLINK_H

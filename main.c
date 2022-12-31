@@ -12,11 +12,21 @@ int main(int argc, char *argv[]) {
 
 
     netdev_item_s *tmp;
+    netdev_item_s *master_dev;
     list_for_each_entry(tmp, &list.list, list) {
+        
+        if (tmp->master > 0){
+            master_dev = ll_get_by_index(list, tmp->master);
+        } else {
+            master_dev = NULL;
+        }
+
         uint8_t *addr_raw = tmp->ll_addr;
-        printf( "%d: kind: '%s' name: %s"
+        printf( "%d: master: %3d %10s "
+                "kind: %10s name: %10s"
                 " %02x:%02x:%02x:%02x:%02x:%02x\n", 
-                tmp->index, tmp->kind, tmp->name,
+                tmp->index, tmp->master, master_dev ? master_dev->name : "", 
+                tmp->kind, tmp->name,
                addr_raw[0], addr_raw[1], addr_raw[2], addr_raw[3], addr_raw[4], addr_raw[5]);
     }
     free_netdev_list(&list);

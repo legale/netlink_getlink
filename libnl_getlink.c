@@ -95,6 +95,17 @@ void free_netdev_list(netdev_item_s *list) {
     }
 }
 
+netdev_item_s *ll_get_by_index(netdev_item_s list, unsigned int index)
+{
+    netdev_item_s *tmp;
+    list_for_each_entry(tmp, &list.list, list) {
+        if(tmp->index == index) return tmp;
+    }
+    
+    return NULL;
+}
+
+
 int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     struct nlmsghdr *nl_hdr; //ptr to netlink msg header for req and answer
     ssize_t status;
@@ -185,6 +196,10 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
                 }
             }
 
+            if (tb[IFLA_MASTER]) {
+                dev->master = *(uint32_t *)RTA_DATA(tb[IFLA_MASTER]);
+            }
+
             if (tb[IFLA_IFNAME]) {
                 strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
             }
@@ -208,3 +223,4 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
 
     return 0;
 }
+
