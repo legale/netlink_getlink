@@ -1,4 +1,3 @@
-#include "libnl_getlink.h"
 #include "list.h"
 
 #include <stdio.h>
@@ -14,6 +13,12 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include "libnl_getlink.h"
+
+#ifdef DEBUG
+#include "leak_detector_c.h"
+#endif
 
 #define parse_rtattr_nested(tb, max, rta) \
 	(parse_rtattr((tb), (max), RTA_DATA(rta), RTA_PAYLOAD(rta)))
@@ -177,15 +182,15 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             chunk_len -= nlmsg_len;
             p += nlmsg_len;
             struct ifinfomsg *msg = NLMSG_DATA(cache.nl_hdr); /* macro to get a ptr right after header */
-            if (!dev) dev = calloc(1, sizeof(netdev_item_s));
-            dev->index = msg->ifi_index;
-
             struct rtattr **tb = (struct rtattr **) &cache.tb;
 
             /* skip loopback device and other non ARPHRD_ETHER */
             if(msg->ifi_type != ARPHRD_ETHER){
                 continue;
             }
+
+            if (!dev) dev = calloc(1, sizeof(netdev_item_s));
+            dev->index = msg->ifi_index;
 
             if (tb[IFLA_LINKINFO]) {
                 struct rtattr *linkinfo[IFLA_INFO_MAX+1];
@@ -211,11 +216,6 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
 
             if (dev) list_add_tail(&dev->list, &list->list); //append dev to list tail
 
-            if (name) {
-                if (memcmp(dev->name, name, name_len) == 0) {
-
-                }
-            }
         }
 
         free(buf);
