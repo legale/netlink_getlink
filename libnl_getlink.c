@@ -134,7 +134,9 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     /* send message */
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
     if (status < 0) {
+        status = errno;
         fprintf(stderr, "error: send %zd %d\n", status, errno);
+        shutdown(sd, SHUT_RDWR); /* close socket */
         return status;
     }
 
@@ -221,6 +223,6 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
         free(buf);
     }
 
-    return 0;
+    return shutdown(sd, SHUT_RDWR); /* close socket */
 }
 
