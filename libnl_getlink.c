@@ -171,10 +171,16 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
         }
 
         nl_hdr = (struct nlmsghdr *) buf;
+     
         if (nl_hdr->nlmsg_type == NLMSG_DONE) {
             free(buf);
             break;
         }
+        
+        if (nl_hdr->nlmsg_type == NLMSG_ERROR) {
+            free(buf);
+            continue;
+        }        
 
         void *p = buf;
         size_t chunk_len = status; //received chunk length
