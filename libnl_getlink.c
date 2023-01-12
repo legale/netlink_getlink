@@ -131,6 +131,10 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
 
 
     int sd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE); /* open socket */
+    if (sd < 0) {
+        perror("socket failed");
+        return -1;
+    }    
     /* send message */
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
     if (status < 0) {
