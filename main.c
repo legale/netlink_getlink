@@ -22,8 +22,8 @@ int main(int argc, char *argv[]) {
             master_dev = NULL;
         }
 
-        if (tmp->ifla_link > 0){
-            link_dev = ll_get_by_index(list, tmp->ifla_link);
+        if (tmp->ifla_link_idx > 0){
+            link_dev = ll_get_by_index(list, tmp->ifla_link_idx);
         } else {
             link_dev = NULL;
         }
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
                 " %02x:%02x:%02x:%02x:%02x:%02x\n", 
                 tmp->index, 
                 tmp->master, master_dev ? master_dev->name : "", 
-                tmp->ifla_link, link_dev ? link_dev->name : "", 
+                tmp->ifla_link_idx, link_dev ? link_dev->name : "", 
                 tmp->kind, tmp->name,
                addr_raw[0], addr_raw[1], addr_raw[2], addr_raw[3], addr_raw[4], addr_raw[5]);
     }

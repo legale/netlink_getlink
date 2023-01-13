@@ -217,7 +217,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             }
 
             if (tb[IFLA_LINK]){
-                dev->ifla_link = *(uint32_t *)RTA_DATA(tb[IFLA_LINK]);
+                dev->ifla_link_idx = *(uint32_t *)RTA_DATA(tb[IFLA_LINK]);
             }
 
             if (tb[IFLA_MASTER]) {
