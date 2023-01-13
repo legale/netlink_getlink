@@ -180,7 +180,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
             break;
         }
         
-        if (nl_hdr->nlmsg_type == NLMSG_ERROR) {
+        if (nl_hdr->nlmsg_type == NLMSG_ERROR || nl_hdr->nlmsg_type == NLMSG_NOOP) {
             free(buf);
             continue;
         }        
@@ -214,6 +214,10 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
                 if(linkinfo[IFLA_INFO_KIND]){
                     memcpy(dev->kind, RTA_DATA(linkinfo[IFLA_INFO_KIND]), IFNAMSIZ);
                 }
+            }
+
+            if (tb[IFLA_LINK]){
+                dev->ifla_link = *(uint32_t *)RTA_DATA(tb[IFLA_LINK]);
             }
 
             if (tb[IFLA_MASTER]) {

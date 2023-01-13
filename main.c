@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     get_netdev(NULL, 0, &list);
 
     netdev_item_s *tmp;
-    netdev_item_s *master_dev;
+    netdev_item_s *master_dev, *link_dev;
     list_for_each_entry(tmp, &list.list, list) {
         
         if (tmp->master > 0){
@@ -22,11 +22,21 @@ int main(int argc, char *argv[]) {
             master_dev = NULL;
         }
 
+        if (tmp->ifla_link > 0){
+            link_dev = ll_get_by_index(list, tmp->ifla_link);
+        } else {
+            link_dev = NULL;
+        }
+
         uint8_t *addr_raw = tmp->ll_addr;
-        printf( "%d: master: %3d %10s "
+        printf( "%d: "
+                "master: %3d %5s "
+                "ifla_link: %3d %5s "
                 "kind: %10s name: %10s"
                 " %02x:%02x:%02x:%02x:%02x:%02x\n", 
-                tmp->index, tmp->master, master_dev ? master_dev->name : "", 
+                tmp->index, 
+                tmp->master, master_dev ? master_dev->name : "", 
+                tmp->ifla_link, link_dev ? link_dev->name : "", 
                 tmp->kind, tmp->name,
                addr_raw[0], addr_raw[1], addr_raw[2], addr_raw[3], addr_raw[4], addr_raw[5]);
     }
