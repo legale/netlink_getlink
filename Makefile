@@ -8,7 +8,10 @@ LDLIBS +=
 LDDIRS += -L$(BD)
 
 #Compiler flags
-CFLAGS += -Wall -O2 -g -DDEBUG
+CFLAGS += -Wall -O2
+ifdef LEAKCHECK
+CFLAGS += -DLEAKCHECK
+endif
 I += -I./
 
 #Compiler
@@ -18,7 +21,10 @@ AR = ar
 #SRC=$(wildcard *.c)
 LIBNAME = nl_getlink
 SRC_LIB = libnl_getlink.c 
-SRC_BIN = leak_detector_c.c main.c
+SRC_BIN = main.c
+ifdef LEAKCHECK
+SRC_BIN += leak_detector_c.c 
+endif
 SRC = $(SRC_LIB) $(SRC_BIN)
 
 all: $(NAME) static shared

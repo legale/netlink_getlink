@@ -4,16 +4,13 @@
 #include "list.h"
 #include "libnl_getlink.h"
 
-#ifdef DEBUG
 #include "leak_detector_c.h"
-#endif
 
 
 int main(int argc, char *argv[]) {
     netdev_item_s list;
     INIT_LIST_HEAD(&list.list);
     get_netdev(NULL, 0, &list);
-
 
     netdev_item_s *tmp;
     netdev_item_s *master_dev;
@@ -34,6 +31,7 @@ int main(int argc, char *argv[]) {
                addr_raw[0], addr_raw[1], addr_raw[2], addr_raw[3], addr_raw[4], addr_raw[5]);
     }
     free_netdev_list(&list);
+    #ifdef LEAKCHECK
     report_mem_leak();
-
+    #endif
 }

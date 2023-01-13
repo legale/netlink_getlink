@@ -1,6 +1,8 @@
 #include	<stdio.h>
 #include	<malloc.h>
 #include	<string.h>
+
+
 #include	"leak_detector_c.h"
 
 #undef		malloc
@@ -9,82 +11,68 @@
 #undef 		free
 
 
-static MEM_LEAK * ptr_start = NULL;
-static MEM_LEAK * ptr_next =  NULL;
+static MEMLEAK _head;
+static MEMLEAK *head = &_head;
+static char memleak_flag = 0;
+
+static inline void __add_memleak_list(MEMLEAK *new, MEMLEAK *prev, MEMLEAK *next){
+    next->prev = new;
+    new->next = next;
+    new->prev = prev;
+    prev->next = new;
+}
+
+static inline void add_memleak_list_tail(MEMLEAK *new, MEMLEAK *head) {
+    __add_memleak_list(new, head->prev, head);
+}
+
+static inline void ht_list_add(MEMLEAK *new, MEMLEAK *head) {
+    __add_memleak_list(new, head, head->next);
+}
+
+static inline void __del_memleak_list(MEMLEAK *prev, MEMLEAK *next) {
+    next->prev = prev;
+    prev->next = next;
+}
+
+static inline void del_memleak_list(MEMLEAK *entry) {
+    __del_memleak_list(entry->prev, entry->next);
+	free(entry);
+}
+
+
 
 /*
  * adds allocated memory info. into the list
  *
  */
-void add(MEM_INFO alloc_info)
-{
-
-	MEM_LEAK * mem_leak_info = NULL;
-	mem_leak_info = (MEM_LEAK *) malloc (sizeof(MEM_LEAK));
-	mem_leak_info->mem_info.address = alloc_info.address;
-	mem_leak_info->mem_info.size = alloc_info.size;
-	strcpy(mem_leak_info->mem_info.file_name, alloc_info.file_name);
-	mem_leak_info->mem_info.line = alloc_info.line;
-	mem_leak_info->next = NULL;
-
-	if (ptr_start == NULL)
-	{
-		ptr_start = mem_leak_info;
-		ptr_next = ptr_start;
+static void add(MEM_INFO alloc_info){
+	MEMLEAK *new = (MEMLEAK *) malloc (sizeof(MEMLEAK));
+	new->mem_info.address = alloc_info.address;
+	new->mem_info.size = alloc_info.size;
+	strcpy(new->mem_info.file_name, alloc_info.file_name);
+	new->mem_info.line = alloc_info.line;
+	
+	if(!memleak_flag){
+		head->prev = head;
+		head->next = head;
+		memleak_flag = 1;
 	}
-	else {
-		ptr_next->next = mem_leak_info;
-		ptr_next = ptr_next->next;
-	}
-
-}
-
-/*
- * erases memory info. from the list
- *
- */
-void erase(unsigned pos)
-{
-
-	unsigned index = 0;
-	MEM_LEAK * alloc_info, * temp;
-
-	if(pos == 0)
-	{
-		MEM_LEAK * temp = ptr_start;
-		ptr_start = ptr_start->next;
-		free(temp);
-	}
-	else
-	{
-		for(index = 0, alloc_info = ptr_start; index < pos;
-			alloc_info = alloc_info->next, ++index)
-		{
-			if(pos == index + 1)
-			{
-				temp = alloc_info->next;
-				alloc_info->next =  temp->next;
-				free(temp);
-				break;
-			}
-		}
-	}
+	
+	add_memleak_list_tail(new, head);	
 }
 
 /*
  * deletes all the elements from the list
  */
-void clear()
-{
-	MEM_LEAK * temp = ptr_start;
-	MEM_LEAK * alloc_info = ptr_start;
+void clear(){
+	MEMLEAK *curr = head;
 
-	while(alloc_info != NULL)
-	{
-		alloc_info = alloc_info->next;
-		free(temp);
-		temp = alloc_info;
+	while(curr->next != head){
+		curr = curr->next;
+		free(curr);		
 	}
+
 }
 
 /*
@@ -122,10 +110,7 @@ void * xrealloc (void *ptr, unsigned int size, const char * file, unsigned int l
 {
 	remove_mem_info(ptr);
 	ptr = realloc(ptr, size);
-	if (ptr != NULL)
-	{
-		add_mem_info(ptr, size, file, line);
-	}
+	add_mem_info(ptr, size, file, line);
 	return ptr;
 }
 
@@ -142,39 +127,39 @@ void xfree(void * mem_ref)
  * gets the allocated memory info and adds it to a list
  *
  */
-void add_mem_info (void * mem_ref, unsigned int size,  const char * file, unsigned int line)
-{
-	MEM_INFO mem_alloc_info;
+void add_mem_info (void * mem_ref, unsigned int size,  const char * file, unsigned int line){
+	MEM_INFO info;
 
 	/* fill up the structure with all info */
-	memset( &mem_alloc_info, 0, sizeof ( mem_alloc_info ) );
-	mem_alloc_info.address 	= mem_ref;
-	mem_alloc_info.size = size;
-	strncpy(mem_alloc_info.file_name, file, FILE_NAME_LENGTH);
-	mem_alloc_info.line = line;
+	info.address = mem_ref;
+	info.size = size;
+	strncpy(info.file_name, file, FILE_NAME_LENGTH);
+	info.line = line;
 
 	/* add the above info to a list */
-	add(mem_alloc_info);
+	add(info);
 }
 
 /*
  * if the allocated memory info is part of the list, removes it
  *
  */
-void remove_mem_info (void * mem_ref)
-{
-	unsigned short index;
-	MEM_LEAK  * leak_info = ptr_start;
+void remove_mem_info (void * mem_ref){
+	MEMLEAK *curr = head;
+	
 
 	/* check if allocate memory is in our list */
-	for(index = 0; leak_info != NULL; ++index, leak_info = leak_info->next)
-	{
-		if ( leak_info->mem_info.address == mem_ref )
-		{
-			erase ( index );
-			break;
+	while(curr->next != head){
+		curr = curr->next;
+		if(curr->mem_info.address == mem_ref){
+			del_memleak_list(curr);
+			return;
 		}
+		
 	}
+
+	/* if mem_ref not found */
+
 }
 
 /*
@@ -182,7 +167,8 @@ void remove_mem_info (void * mem_ref)
  */
 void report_mem_leak(void)
 {
-	MEM_LEAK * leak_info;
+	MEMLEAK *curr = head->next;
+	MEMLEAK *next;
 
 	FILE * fp_write = fopen (OUTPUT_FILE, "wt");
 	char info[1024];
@@ -194,18 +180,20 @@ void report_mem_leak(void)
 		sprintf(info, "%s\n", "-----------------------------------");
 		fwrite(info, (strlen(info) + 1) , 1, fp_write);
 
-		for(leak_info = ptr_start; leak_info != NULL; leak_info = leak_info->next)
-		{
-			sprintf(info, "address : %zu\n", (size_t)leak_info->mem_info.address);
+		while(curr->next != head){
+			printf("HIT\n");
+			next = curr->next;
+			sprintf(info, "address : %zu\n", (size_t)curr->mem_info.address);
 			fwrite(info, (strlen(info) + 1) , 1, fp_write);
-			sprintf(info, "size    : %zu bytes\n", (size_t)leak_info->mem_info.size);
+			sprintf(info, "size    : %zu bytes\n", (size_t)curr->mem_info.size);
 			fwrite(info, (strlen(info) + 1) , 1, fp_write);
-			sprintf(info, "file    : %s\n", leak_info->mem_info.file_name);
+			sprintf(info, "file    : %s\n", curr->mem_info.file_name);
 			fwrite(info, (strlen(info) + 1) , 1, fp_write);
-			sprintf(info, "line    : %d\n", leak_info->mem_info.line);
+			sprintf(info, "line    : %d\n", curr->mem_info.line);
 			fwrite(info, (strlen(info) + 1) , 1, fp_write);
 			sprintf(info, "%s\n", "-----------------------------------");
 			fwrite(info, (strlen(info) + 1) , 1, fp_write);
+			curr = next;
 		}
 	fclose(fp_write);
 	

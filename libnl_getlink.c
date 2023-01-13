@@ -16,9 +16,7 @@
 
 #include "libnl_getlink.h"
 
-#ifdef DEBUG
 #include "leak_detector_c.h"
-#endif
 
 #define parse_rtattr_nested(tb, max, rta) \
 	(parse_rtattr((tb), (max), RTA_DATA(rta), RTA_PAYLOAD(rta)))
@@ -171,7 +169,12 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
         }
 
         nl_hdr = (struct nlmsghdr *) buf;
-     
+        
+        if(!NLMSG_OK(nl_hdr, status)){
+            free(buf);
+            break;
+        }
+
         if (nl_hdr->nlmsg_type == NLMSG_DONE) {
             free(buf);
             break;
