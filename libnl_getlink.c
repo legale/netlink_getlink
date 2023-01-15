@@ -155,8 +155,6 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
          */
         status = recv(sd, buf, expected_buf_size, MSG_TRUNC | MSG_PEEK);
         nl_hdr = (struct nlmsghdr *) buf;
-        printf("nlmsg_type: 0x%x\n", nl_hdr->nlmsg_type);
-
         
         if (status < 0) {
             fprintf(stderr, "error: recv %zd %d\n", status, errno);
@@ -173,7 +171,6 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
         }
 
         nl_hdr = (struct nlmsghdr *) buf;
-        printf("nlmsg_type: 0x%x\n", nl_hdr->nlmsg_type);
         
         if(!NLMSG_OK(nl_hdr, status)){
             free(buf);
@@ -250,7 +247,8 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
 
         free(buf);
     }
-
+    
+    printf("%s\n", __func__);
     return close(sd); /* close socket */
 }
 
