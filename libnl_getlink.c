@@ -145,7 +145,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     while (1) {
         /* get an answer */
         /*first we need to find out buffer size needed */
-        ssize_t expected_buf_size = 512; /* initial buffer size */
+        ssize_t expected_buf_size = 10; /* initial buffer size */
         buf = malloc(expected_buf_size); /* alloc memory for a buffer */
 
         /*
@@ -154,6 +154,10 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
          * Thus, a subsequent receive call will return the same data.
          */
         status = recv(sd, buf, expected_buf_size, MSG_TRUNC | MSG_PEEK);
+        nl_hdr = (struct nlmsghdr *) buf;
+        printf("nlmsg_type: 0x%x\n", nl_hdr->nlmsg_type);
+
+        
         if (status < 0) {
             fprintf(stderr, "error: recv %zd %d\n", status, errno);
             free(buf);
@@ -169,6 +173,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
         }
 
         nl_hdr = (struct nlmsghdr *) buf;
+        printf("nlmsg_type: 0x%x\n", nl_hdr->nlmsg_type);
         
         if(!NLMSG_OK(nl_hdr, status)){
             free(buf);
@@ -183,7 +188,13 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
         if (nl_hdr->nlmsg_type == NLMSG_ERROR || nl_hdr->nlmsg_type == NLMSG_NOOP) {
             free(buf);
             continue;
-        }        
+        }
+
+        if (nl_hdr->nlmsg_type != NLMSG_MIN_TYPE) {
+            printf("error: NLMSG_MIN_TYPE 0x10 expected: recv: 0x%x\n", nl_hdr->nlmsg_type);
+            free(buf);
+            continue;
+        }    
 
         void *p = buf;
         size_t chunk_len = status; //received chunk length
