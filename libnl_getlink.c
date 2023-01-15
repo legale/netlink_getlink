@@ -248,7 +248,7 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
         free(buf);
     }
     
-    printf("%s end\n", __func__);
+    printf("end %s %zu\n", __func__, list);
     return close(sd); /* close socket */
 }
 
