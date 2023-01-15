@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "libnl_getlink.h"
 
@@ -132,7 +134,9 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     if (sd < 0) {
         perror("socket failed");
         return -1;
-    }    
+    }
+    fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+
     /* send message */
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
     if (status < 0) {
