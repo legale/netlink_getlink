@@ -30,14 +30,14 @@ typedef struct nl_req {
     struct rtgenmsg gen;
 } nl_req_s;
 
-typedef struct nlcache {
-    struct nlmsghdr *nl_hdr;
-    struct rtattr tb[IFLA_MAX + 1];
-} nlcache;
-
 
 int get_netdev(char *name, size_t name_len, netdev_item_s *list);
 netdev_item_s *ll_get_by_index(netdev_item_s list, unsigned int index);
 void free_netdev_list(netdev_item_s *list);
+
+#ifndef syslogwda
+#define syslogwda(__pri, __fmt, ...)\
+    {syslog(__pri, __fmt, ##__VA_ARGS__); if((setlogmask(0) & LOG_MASK(__pri))) printf(__fmt, ##__VA_ARGS__);}
+#endif
 
 #endif //NETLINK_GET_ADDR_LIBNL_GETLINK_H

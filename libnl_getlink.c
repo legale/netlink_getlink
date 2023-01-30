@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <syslog.h>
 
 #include "libnl_getlink.h"
 
@@ -48,22 +49,18 @@ static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int le
 }
 
 
-/* parse arp cache netlink messages */
-static ssize_t parse_nlbuf(void *buf, size_t buf_size, nlcache *cache) {
-    void *p = buf; /* just a ptr to work with netlink answer data */
-
-    struct nlmsghdr *hdr = p; /* netlink header structure */
-    uint32_t len = hdr->nlmsg_len; /* netlink message length including header */
-    struct ifinfomsg *msg = NLMSG_DATA(hdr); /* macro to get a ptr right after header */
-    cache->nl_hdr = hdr; //save hdr ptr to cache
+/* parse netlink message */
+static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
+    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
+    unsigned int len = nh->nlmsg_len; /* netlink message length including header */
+    struct ifinfomsg *msg = NLMSG_DATA(nh); /* macro to get a ptr right after header */
     uint32_t msg_len = NLMSG_LENGTH(sizeof(*msg)); /* netlink message length without header */
-    p += msg_len; /* move ptr forward */
-    len -= msg_len; /* count message length left */
-    /* this is very first rtnetlink attribute */
-    struct rtattr *rta = p;
-    parse_rtattr((struct rtattr **) &cache->tb, IFLA_MAX, rta, len); /* fill tb attribute buffer */
-
-    return hdr->nlmsg_len;
+    void *p = nh; /* ptr to nh */
+    /* this is very first rtnetlink attribute ptr */
+    struct rtattr *rta = (struct rtattr *)(p + msg_len); /* move ptr forward */
+    len -= msg_len; /* count message length */
+    parse_rtattr(tb, IFLA_MAX, rta, len); /* fill tb attribute buffer */
+    return nh->nlmsg_len;
 }
 
 
@@ -73,9 +70,7 @@ int addattr_l(struct nlmsghdr *n, int maxlen, int type, const void *data,
     struct rtattr *rta;
 
     if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(len) > maxlen) {
-        fprintf(stderr,
-                "addattr_l ERROR: message exceeded bound of %d\n",
-                maxlen);
+        syslogwda(LOG_NOTICE, "addattr_l ERROR: message exceeded bound of %d\n", maxlen);
         return -1;
     }
     rta = NLMSG_TAIL(n);
@@ -111,10 +106,8 @@ netdev_item_s *ll_get_by_index(netdev_item_s list, unsigned int index)
 }
 
 
-int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
-    struct nlmsghdr *nl_hdr; //ptr to netlink msg header for req and answer
+static int send_msg(){
     ssize_t status;
-    void *buf; /* ptr to a buffer */
     struct {
         struct nlmsghdr nlh;
         struct ifinfomsg m;
@@ -122,137 +115,148 @@ int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
     } req = {
             .nlh.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifinfomsg)),
             .nlh.nlmsg_type = RTM_GETLINK,
-            .nlh.nlmsg_flags =  NLM_F_REQUEST | NLM_F_DUMP,
+            .nlh.nlmsg_flags =  NLM_F_REQUEST | NLM_F_DUMP | NLM_F_ACK,
             .nlh.nlmsg_pid = 0,
             .nlh.nlmsg_seq = 1,
     };
+    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     int err = addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF);
-    if (err) return err;
-
-
-    int sd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE); /* open socket */
-    if (sd < 0) {
-        perror("socket failed");
+    if (err){
+        syslogwda(LOG_NOTICE, "error: %s addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF)\n", strerror(errno));
         return -1;
     }
+
+    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
+    int sd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE); /* open socket */
+    if (sd < 0) {
+        syslogwda(LOG_NOTICE, "error: %s socket()\n", strerror(errno));
+        return -1;
+    }
+    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
     /* send message */
+    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
     if (status < 0) {
         status = errno;
-        fprintf(stderr, "error: send %zd %d\n", status, errno);
+        syslogwda(LOG_NOTICE, "error: %s send()\n", strerror(errno));
         close(sd); /* close socket */
-        return status;
+        return -1;
+    }
+    return sd;
+}
+
+static ssize_t recv_msg(int sd, void **buf){
+    size_t bufsize = 512;
+    *buf = malloc(bufsize);
+    struct iovec iov = { *buf, bufsize };
+    struct sockaddr_nl sa;
+    struct msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
+    ssize_t len = recvmsg(sd, &msg, MSG_PEEK | MSG_TRUNC);
+    if(len > bufsize){
+        bufsize = len;
+        *buf = realloc(*buf, bufsize);
+        iov.iov_base = *buf; iov.iov_len = bufsize;
+    }
+    len = recvmsg(sd, &msg, 0);
+    syslogwda(LOG_DEBUG,"len: %zu\n", len);
+    return len;
+}
+
+static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
+    size_t counter = 0;
+    struct nlmsghdr *nh;
+
+    for (nh = (struct nlmsghdr *) buf; NLMSG_OK (nh, len); nh = NLMSG_NEXT(nh, len)) {
+        syslogwda(LOG_DEBUG,"cnt: %zu\n", counter++); 
+        syslogwda(LOG_DEBUG,"msg type len: %d\n", nh->nlmsg_type);
+        syslogwda(LOG_DEBUG,"NLMSG  len: %zu\n", (size_t)nh->nlmsg_len);
+        
+        syslogwda(LOG_DEBUG,"FLAGS NLM_F_MULTI: %s\n", nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
+        
+        /* The end of multipart message */
+        if (nh->nlmsg_type == NLMSG_DONE){
+            syslogwda(LOG_DEBUG, "DONE!!!\n");
+            return -1;
+        } 
+
+        /* Error handling */
+        if (nh->nlmsg_type == NLMSG_ERROR){
+            syslogwda(LOG_DEBUG, "ERROR!!!\n");
+            continue;
+        }
+
+        struct rtattr *tb[IFLA_MAX + 1] = { 0 };
+        ssize_t nlmsg_len = parse_nlbuf(nh, tb);
+        syslogwda(LOG_DEBUG, "parsed nlmsg_len: %zd\n", nlmsg_len);
+
+
+        netdev_item_s *dev = NULL;
+        struct ifinfomsg *msg = NLMSG_DATA(nh); /* macro to get a ptr right after header */
+        /* skip loopback device and other non ARPHRD_ETHER */
+
+        if(msg->ifi_type != ARPHRD_ETHER){
+            continue;
+        }
+        syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
+        if (!dev) dev = calloc(1, sizeof(netdev_item_s));
+        dev->index = msg->ifi_index;
+        syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
+
+        if (tb[IFLA_LINKINFO]) {
+            struct rtattr *linkinfo[IFLA_INFO_MAX+1];
+            parse_rtattr_nested(linkinfo, IFLA_INFO_MAX, tb[IFLA_LINKINFO]);
+
+            if(linkinfo[IFLA_INFO_KIND]){
+                memcpy(dev->kind, RTA_DATA(linkinfo[IFLA_INFO_KIND]), IFNAMSIZ);
+            }
+        }
+
+        if (tb[IFLA_LINK]){
+            dev->ifla_link_idx = *(uint32_t *)RTA_DATA(tb[IFLA_LINK]);
+        }
+
+        if (tb[IFLA_MASTER]) {
+            dev->master = *(uint32_t *)RTA_DATA(tb[IFLA_MASTER]);
+        }
+
+        if (tb[IFLA_IFNAME]) {
+            strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
+        }
+
+        /* mac */
+        if (tb[IFLA_ADDRESS]) {
+            memcpy((void *) &dev->ll_addr, RTA_DATA(tb[IFLA_ADDRESS]), IFHWADDRLEN);
+        }
+
+        if (dev) list_add_tail(&dev->list, &list->list); //append dev to list tail
+        
+
+        syslogwda(LOG_DEBUG,"FLAGS NLM_F_MULTI: %s\n", nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
     }
 
-    while (1) {
-        /* get an answer */
-        /*first we need to find out buffer size needed */
-        ssize_t expected_buf_size = 10; /* initial buffer size */
-        buf = malloc(expected_buf_size); /* alloc memory for a buffer */
+    return 0;
 
-        /*
-         * MSG_TRUNC will return data size even if buffer is smaller than data
-         * MSG_PEEK will receive queue without removing that data from the queue.
-         * Thus, a subsequent receive call will return the same data.
-         */
-        status = recv(sd, buf, expected_buf_size, MSG_TRUNC | MSG_PEEK);
-        nl_hdr = (struct nlmsghdr *) buf;
-        
-        if (status < 0) {
-            fprintf(stderr, "error: recv %zd %d\n", status, errno);
-            free(buf);
-            break; // there is no messages left to receive
-        }
+}
 
+int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
+    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
+    int sd;
+    void *buf;
+    ssize_t len;
+    /*open socket and send req */
+    sd = send_msg();
 
-        if (status > expected_buf_size) {
-            expected_buf_size = status; /* this is real size */
-            buf = realloc(buf, expected_buf_size); /* increase buffer size */
-            status = recv(sd, buf, expected_buf_size, 0); /* now we get the full message */
-            if (status < 0) fprintf(stderr, "error: recv %zd %d\n", status, errno);
-        }
-
-        nl_hdr = (struct nlmsghdr *) buf;
-        
-        if(!NLMSG_OK(nl_hdr, status)){
-            free(buf);
-            break;
-        }
-
-        if (nl_hdr->nlmsg_type == NLMSG_DONE) {
-            free(buf);
-            break;
-        }
-        
-        if (nl_hdr->nlmsg_type == NLMSG_ERROR || nl_hdr->nlmsg_type == NLMSG_NOOP) {
-            free(buf);
-            continue;
-        }
-
-        if (nl_hdr->nlmsg_type != NLMSG_MIN_TYPE) {
-            printf("error: NLMSG_MIN_TYPE 0x10 expected: recv: 0x%x\n", nl_hdr->nlmsg_type);
-            free(buf);
-            continue;
-        }    
-
-        void *p = buf;
-        size_t chunk_len = status; //received chunk length
-        size_t nlmsg_len; //parsed nl msg length
-
-
-        while (chunk_len) {
-            netdev_item_s *dev = NULL;
-            nlcache cache = {0}; //single nl message attributes table
-            nlmsg_len = parse_nlbuf(p, chunk_len, (nlcache *) &cache);
-            chunk_len -= nlmsg_len;
-            p += nlmsg_len;
-            struct ifinfomsg *msg = NLMSG_DATA(cache.nl_hdr); /* macro to get a ptr right after header */
-            struct rtattr **tb = (struct rtattr **) &cache.tb;
-
-            /* skip loopback device and other non ARPHRD_ETHER */
-            if(msg->ifi_type != ARPHRD_ETHER){
-                continue;
-            }
-
-            if (!dev) dev = calloc(1, sizeof(netdev_item_s));
-            dev->index = msg->ifi_index;
-
-            if (tb[IFLA_LINKINFO]) {
-                struct rtattr *linkinfo[IFLA_INFO_MAX+1];
-                parse_rtattr_nested(linkinfo, IFLA_INFO_MAX, tb[IFLA_LINKINFO]);
-
-                if(linkinfo[IFLA_INFO_KIND]){
-                    memcpy(dev->kind, RTA_DATA(linkinfo[IFLA_INFO_KIND]), IFNAMSIZ);
-                }
-            }
-
-            if (tb[IFLA_LINK]){
-                dev->ifla_link_idx = *(uint32_t *)RTA_DATA(tb[IFLA_LINK]);
-            }
-
-            if (tb[IFLA_MASTER]) {
-                dev->master = *(uint32_t *)RTA_DATA(tb[IFLA_MASTER]);
-            }
-
-            if (tb[IFLA_IFNAME]) {
-                strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
-            }
-
-            /* mac */
-            if (tb[IFLA_ADDRESS]) {
-                memcpy((void *) &dev->ll_addr, RTA_DATA(tb[IFLA_ADDRESS]), IFHWADDRLEN);
-            }
-
-            if (dev) list_add_tail(&dev->list, &list->list); //append dev to list tail
-
-        }
-
+    /* recv and parse kernel answers */
+    int status = 0;
+    while(status == 0){
+        len = recv_msg(sd, &buf);
+        status = parse_recv_chunk(buf, len, list);
         free(buf);
     }
-    
-    //printf("end %s %zu\n", __func__, (size_t)list);
-    return close(sd); /* close socket */
+
+    close(sd); /* close socket */
+    return 0; 
 }
 
