@@ -7,10 +7,10 @@
 #include "leak_detector_c.h"
 
 
-int main(int argc, char *argv[]) {
+int main() {
     netdev_item_s list;
     INIT_LIST_HEAD(&list.list);
-    get_netdev(NULL, 0, &list);
+    get_netdev(&list);
 
     netdev_item_s *tmp;
     netdev_item_s *master_dev, *link_dev;

@@ -8,7 +8,7 @@ LDLIBS +=
 LDDIRS += -L$(BD)
 
 #Compiler flags
-CFLAGS += -Wall -O2
+CFLAGS += -Wall -Wextra -O2
 ifdef LEAKCHECK
 CFLAGS += -DLEAKCHECK
 endif

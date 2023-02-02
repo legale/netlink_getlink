@@ -31,8 +31,8 @@ typedef struct nl_req {
 } nl_req_s;
 
 
-int get_netdev(char *name, size_t name_len, netdev_item_s *list);
-netdev_item_s *ll_get_by_index(netdev_item_s list, unsigned int index);
+int get_netdev(netdev_item_s *list);
+netdev_item_s *ll_get_by_index(netdev_item_s list, int index);
 void free_netdev_list(netdev_item_s *list);
 
 #ifndef syslogwda

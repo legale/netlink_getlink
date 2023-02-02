@@ -64,7 +64,7 @@ static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
 }
 
 
-int addattr_l(struct nlmsghdr *n, int maxlen, int type, const void *data,
+static int addattr_l(struct nlmsghdr *n, unsigned int maxlen, int type, const void *data,
               int alen) {
     int len = RTA_LENGTH(alen);
     struct rtattr *rta;
@@ -83,7 +83,7 @@ int addattr_l(struct nlmsghdr *n, int maxlen, int type, const void *data,
 }
 
 
-int addattr32(struct nlmsghdr *n, int maxlen, int type, __u32 data) {
+int addattr32(struct nlmsghdr *n, unsigned int maxlen, int type, __u32 data) {
     return addattr_l(n, maxlen, type, &data, sizeof(__u32));
 }
 
@@ -95,7 +95,7 @@ void free_netdev_list(netdev_item_s *list) {
     }
 }
 
-netdev_item_s *ll_get_by_index(netdev_item_s list, unsigned int index)
+netdev_item_s *ll_get_by_index(netdev_item_s list, int index)
 {
     netdev_item_s *tmp;
     list_for_each_entry(tmp, &list.list, list) {
@@ -148,7 +148,7 @@ static int send_msg(){
 }
 
 static ssize_t recv_msg(int sd, void **buf){
-    size_t bufsize = 512;
+    ssize_t bufsize = 512;
     *buf = malloc(bufsize);
     struct iovec iov = { *buf, bufsize };
     struct sockaddr_nl sa;
@@ -240,7 +240,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
 
 }
 
-int get_netdev(char *name, size_t name_len, netdev_item_s *list) {
+int get_netdev(netdev_item_s *list) {
     syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     int sd;
     void *buf;
