@@ -152,7 +152,7 @@ static ssize_t recv_msg(int sd, void **buf){
     *buf = malloc(bufsize);
     struct iovec iov = { *buf, bufsize };
     struct sockaddr_nl sa;
-    struct msghdr msg = { &sa, sizeof(sa), &iov, 1, NULL, 0, 0 };
+    struct msghdr msg = { &sa, sizeof(sa), &iov, 1, 0, 0, 0 };
     ssize_t len = recvmsg(sd, &msg, MSG_PEEK | MSG_TRUNC);
     if(len > bufsize){
         bufsize = len;
