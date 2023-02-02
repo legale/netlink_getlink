@@ -19,8 +19,8 @@ typedef struct netdev_item {
     int index;
     int master; /* master device */
     int ifla_link_idx; /* ifla_link index */
-    char kind[IFNAMSIZ]; /* IFLA_INFO_KIND nested in rtattr IFLA_LINKINFO  */
-    char name[IFNAMSIZ];
+    char kind[IFNAMSIZ + 1]; /* IFLA_INFO_KIND nested in rtattr IFLA_LINKINFO  */
+    char name[IFNAMSIZ + 1];
     uint8_t ll_addr[IFHWADDRLEN];
     struct list_head list;
 } netdev_item_s;
