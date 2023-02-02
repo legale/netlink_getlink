@@ -25,10 +25,9 @@
 	(parse_rtattr((tb), (max), RTA_DATA(rta), RTA_PAYLOAD(rta)))
 
 
-static int parse_rtattr_flags(struct rtattr *tb[], int max, struct rtattr *rta,
-		       int len, unsigned short flags)
-{
-	unsigned short type;
+static int parse_rtattr_flags(struct rtattr *tb[], int max, struct rtattr *rta, int len, unsigned short flags){
+	syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
+    unsigned short type;
 
 	memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
 	while (RTA_OK(rta, len)) {
@@ -51,7 +50,7 @@ static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int le
 
 /* parse netlink message */
 static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
-    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
+    syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
     unsigned int len = nh->nlmsg_len; /* netlink message length including header */
     struct ifinfomsg *msg = NLMSG_DATA(nh); /* macro to get a ptr right after header */
     uint32_t msg_len = NLMSG_LENGTH(sizeof(*msg)); /* netlink message length without header */
@@ -64,8 +63,8 @@ static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
 }
 
 
-static int addattr_l(struct nlmsghdr *n, unsigned int maxlen, int type, const void *data,
-              int alen) {
+static int addattr_l(struct nlmsghdr *n, unsigned int maxlen, int type, const void *data, int alen) {
+    syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
     int len = RTA_LENGTH(alen);
     struct rtattr *rta;
 
@@ -89,14 +88,15 @@ int addattr32(struct nlmsghdr *n, unsigned int maxlen, int type, __u32 data) {
 
 
 void free_netdev_list(netdev_item_s *list) {
+    syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
     netdev_item_s *item, *tmp;
     list_for_each_entry_safe(item, tmp, &list->list, list) {
         free(item);
     }
 }
 
-netdev_item_s *ll_get_by_index(netdev_item_s list, int index)
-{
+netdev_item_s *ll_get_by_index(netdev_item_s list, int index){
+    syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
     netdev_item_s *tmp;
     list_for_each_entry(tmp, &list.list, list) {
         if(tmp->index == index) return tmp;
@@ -107,6 +107,7 @@ netdev_item_s *ll_get_by_index(netdev_item_s list, int index)
 
 
 static int send_msg(){
+    syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
     ssize_t status;
     struct {
         struct nlmsghdr nlh;
@@ -119,24 +120,20 @@ static int send_msg(){
             .nlh.nlmsg_pid = 0,
             .nlh.nlmsg_seq = 1,
     };
-    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     int err = addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF);
     if (err){
         syslogwda(LOG_NOTICE, "error: %s addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF)\n", strerror(errno));
         return -1;
     }
 
-    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     int sd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE); /* open socket */
     if (sd < 0) {
         syslogwda(LOG_NOTICE, "error: %s socket()\n", strerror(errno));
         return -1;
     }
-    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
     /* send message */
-    syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
     if (status < 0) {
         status = errno;
@@ -148,16 +145,27 @@ static int send_msg(){
 }
 
 static ssize_t recv_msg(int sd, void **buf){
+    syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
     ssize_t bufsize = 512;
     *buf = malloc(bufsize);
-    struct iovec iov = { *buf, bufsize };
+    struct iovec iov = { .iov_base = *buf, .iov_len = bufsize };
     struct sockaddr_nl sa;
-    struct msghdr msg = { &sa, sizeof(sa), &iov, 1, 0, 0, 0 };
+    struct msghdr msg = {
+        .msg_name = &sa,
+        .msg_namelen = sizeof(sa),
+        .msg_iov = &iov,
+        .msg_iovlen = 1,
+        .msg_control = NULL,
+        .msg_controllen = 0,
+        .msg_flags = 0
+    };
+
     ssize_t len = recvmsg(sd, &msg, MSG_PEEK | MSG_TRUNC);
     if(len > bufsize){
         bufsize = len;
         *buf = realloc(*buf, bufsize);
-        iov.iov_base = *buf; iov.iov_len = bufsize;
+        iov.iov_base = *buf; 
+        iov.iov_len = bufsize;
     }
     len = recvmsg(sd, &msg, 0);
     syslogwda(LOG_DEBUG,"len: %zu\n", len);
@@ -165,6 +173,7 @@ static ssize_t recv_msg(int sd, void **buf){
 }
 
 static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
+    syslogwda(LOG_INFO,"%s() %s:%d\n", __func__, __FILE__, __LINE__);
     size_t counter = 0;
     struct nlmsghdr *nh;
 
@@ -172,18 +181,17 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
         syslogwda(LOG_DEBUG,"cnt: %zu\n", counter++); 
         syslogwda(LOG_DEBUG,"msg type len: %d\n", nh->nlmsg_type);
         syslogwda(LOG_DEBUG,"NLMSG  len: %zu\n", (size_t)nh->nlmsg_len);
-        
         syslogwda(LOG_DEBUG,"FLAGS NLM_F_MULTI: %s\n", nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
         
         /* The end of multipart message */
         if (nh->nlmsg_type == NLMSG_DONE){
-            syslogwda(LOG_DEBUG, "DONE!!!\n");
+            syslogwda(LOG_DEBUG, "NLMSG_DONE\n");
             return -1;
         } 
 
         /* Error handling */
         if (nh->nlmsg_type == NLMSG_ERROR){
-            syslogwda(LOG_DEBUG, "ERROR!!!\n");
+            syslogwda(LOG_DEBUG, "NLMSG_ERROR\n");
             continue;
         }
 
@@ -199,10 +207,8 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
         if(msg->ifi_type != ARPHRD_ETHER){
             continue;
         }
-        syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
         if (!dev) dev = calloc(1, sizeof(netdev_item_s));
         dev->index = msg->ifi_index;
-        syslogwda(LOG_DEBUG,"%s %s:%d\n", __func__, __FILE__, __LINE__);
 
         if (tb[IFLA_LINKINFO]) {
             struct rtattr *linkinfo[IFLA_INFO_MAX+1];
