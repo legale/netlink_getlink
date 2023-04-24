@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <syslog.h>
+#include <sys/time.h> /* timeval_t struct */
 
 #include "libnl_getlink.h"
 
@@ -132,6 +133,15 @@ static int send_msg(){
         return -1;
     }
     fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+
+    // set socket timeout 1 sec
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        perror("setsockopt");
+        return -2;
+    }
 
     /* send message */
     status = send(sd, &req, req.nlh.nlmsg_len, 0);
