@@ -187,7 +187,17 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
     size_t counter = 0;
     struct nlmsghdr *nh;
 
+    /*check length */
+    if(len <= 0){
+        return -1;
+    }
+
     for (nh = (struct nlmsghdr *) buf; NLMSG_OK (nh, len); nh = NLMSG_NEXT(nh, len)) {
+        if (counter > 100) {
+            syslogwda(LOG_ALERT, "error: counter %zu > 100\n", counter);
+            break;
+        }
+
         syslogwda(LOG_DEBUG,"cnt: %zu\n", counter++); 
         syslogwda(LOG_DEBUG,"msg type len: %d\n", nh->nlmsg_type);
         syslogwda(LOG_DEBUG,"NLMSG  len: %zu\n", (size_t)nh->nlmsg_len);
@@ -197,7 +207,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
         if (nh->nlmsg_type == NLMSG_DONE){
             syslogwda(LOG_DEBUG, "NLMSG_DONE\n");
             return -1;
-        } 
+        }
 
         /* Error handling */
         if (nh->nlmsg_type == NLMSG_ERROR){
@@ -217,7 +227,15 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
         if(msg->ifi_type != ARPHRD_ETHER){
             continue;
         }
-        if (!dev) dev = calloc(1, sizeof(netdev_item_s));
+
+        if (!dev) {
+            dev = calloc(1, sizeof(netdev_item_s));
+            if (!dev) {
+                syslogwda(LOG_ALERT, "error: Failed to allocate memory for netdev_item_s.\n");
+                return -1;
+            }
+        }
+
         dev->index = msg->ifi_index;
 
         if (tb[IFLA_LINKINFO]) {
@@ -229,16 +247,19 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
             }
         }
 
+        if (!tb[IFLA_IFNAME]) {
+            syslogwda(LOG_WARNING, "IFLA_IFNAME attribute is missing.\n");
+            continue;
+        } else {
+            strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
+        }        
+
         if (tb[IFLA_LINK]){
             dev->ifla_link_idx = *(uint32_t *)RTA_DATA(tb[IFLA_LINK]);
         }
 
         if (tb[IFLA_MASTER]) {
             dev->master = *(uint32_t *)RTA_DATA(tb[IFLA_MASTER]);
-        }
-
-        if (tb[IFLA_IFNAME]) {
-            strcpy(dev->name, (char *) RTA_DATA(tb[IFLA_IFNAME]));
         }
 
         /* mac */
