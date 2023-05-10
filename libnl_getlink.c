@@ -133,11 +133,12 @@ static int send_msg(){
         return -1;
     }
     fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+    // set socket nonblocking flag
+    // int flags = fcntl(sd, F_GETFL, 0);
+    // fcntl(sd, F_SETFL, flags | O_NONBLOCK);
 
-    // set socket timeout 1 sec
-    struct timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
+    // set socket timeout 100ms
+    struct timeval tv = {.tv_sec = 0, .tv_usec = 100000};
     if (setsockopt(sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         perror("setsockopt");
         return -2;
@@ -170,13 +171,19 @@ static ssize_t recv_msg(int sd, void **buf){
         .msg_flags = 0
     };
 
+    syslogwda(LOG_DEBUG,"recvmsg %s:%d ", __FILE__, __LINE__);
+    
     ssize_t len = recvmsg(sd, &msg, MSG_PEEK | MSG_TRUNC);
+    syslogwda(LOG_DEBUG,"len: %zu\n", len);
+    if(len <= 0) return len;
+
     if(len > bufsize){
         bufsize = len;
         *buf = realloc(*buf, bufsize);
         iov.iov_base = *buf; 
         iov.iov_len = bufsize;
     }
+    syslogwda(LOG_DEBUG,"recvmsg %s:%d ", __FILE__, __LINE__);
     len = recvmsg(sd, &msg, 0);
     syslogwda(LOG_DEBUG,"len: %zu\n", len);
     return len;
@@ -217,7 +224,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list){
 
         struct rtattr *tb[IFLA_MAX + 1] = { 0 };
         ssize_t nlmsg_len = parse_nlbuf(nh, tb);
-        syslogwda(LOG_DEBUG, "parsed nlmsg_len: %zd\n", nlmsg_len);
+        syslogwda(LOG_INFO, "parsed nlmsg_len: %zd\n", nlmsg_len);
 
 
         netdev_item_s *dev = NULL;

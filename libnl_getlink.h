@@ -37,7 +37,7 @@ void free_netdev_list(netdev_item_s *list);
 
 #ifndef syslogwda
 #define syslogwda(__pri, __fmt, ...)\
-    {syslog(__pri, __fmt, ##__VA_ARGS__); if((setlogmask(0) & LOG_MASK(__pri))) printf(__fmt, ##__VA_ARGS__);}
+    {syslog(__pri, __fmt, ##__VA_ARGS__); if((setlogmask(0) & LOG_MASK(__pri))){printf("%d ",getpid());printf(__fmt, ##__VA_ARGS__);}}
 #endif
 
 #endif //NETLINK_GET_ADDR_LIBNL_GETLINK_H
