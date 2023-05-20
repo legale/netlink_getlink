@@ -86,6 +86,7 @@ void free_netdev_list(netdev_item_s *list) {
   syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
   netdev_item_s *item, *tmp;
   list_for_each_entry_safe(item, tmp, &list->list, list) {
+    syslogwda(LOG_DEBUG, "%s %s:%d\n", __func__, __FILE__, __LINE__);
     free(item);
   }
 }
@@ -293,6 +294,7 @@ int get_netdev(netdev_item_s *list) {
   while (status == 0) {
     len = recv_msg(sd, &buf);
     status = parse_recv_chunk(buf, len, list);
+    syslogwda(LOG_DEBUG, "%s %s:%d\n", __func__, __FILE__, __LINE__);
     free(buf);
   }
 
