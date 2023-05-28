@@ -26,7 +26,7 @@
   (parse_rtattr((tb), (max), RTA_DATA(rta), RTA_PAYLOAD(rta)))
 
 static int parse_rtattr_flags(struct rtattr *tb[], int max, struct rtattr *rta, int len, unsigned short flags) {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   unsigned short type;
 
   memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
@@ -48,7 +48,7 @@ static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int le
 
 /* parse netlink message */
 static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   unsigned int len = nh->nlmsg_len;              /* netlink message length including header */
   struct ifinfomsg *msg = NLMSG_DATA(nh);        /* macro to get a ptr right after header */
   uint32_t msg_len = NLMSG_LENGTH(sizeof(*msg)); /* netlink message length without header */
@@ -61,7 +61,7 @@ static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
 }
 
 static int addattr_l(struct nlmsghdr *n, unsigned int maxlen, int type, const void *data, int alen) {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   int len = RTA_LENGTH(alen);
   struct rtattr *rta;
 
@@ -83,16 +83,15 @@ int addattr32(struct nlmsghdr *n, unsigned int maxlen, int type, __u32 data) {
 }
 
 void free_netdev_list(netdev_item_s *list) {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   netdev_item_s *item, *tmp;
   list_for_each_entry_safe(item, tmp, &list->list, list) {
-    syslogwda(LOG_DEBUG, "%s %s:%d\n", __func__, __FILE__, __LINE__);
     free(item);
   }
 }
 
 netdev_item_s *ll_get_by_index(netdev_item_s list, int index) {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   netdev_item_s *tmp;
   list_for_each_entry(tmp, &list.list, list) {
     if (tmp->index == index) return tmp;
@@ -102,7 +101,7 @@ netdev_item_s *ll_get_by_index(netdev_item_s list, int index) {
 }
 
 static int send_msg() {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   ssize_t status;
   struct {
     struct nlmsghdr nlh;
@@ -150,7 +149,7 @@ static int send_msg() {
 }
 
 static ssize_t recv_msg(int sd, void **buf) {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   ssize_t bufsize = 512;
   *buf = malloc(bufsize);
   struct iovec iov = {.iov_base = *buf, .iov_len = bufsize};
@@ -164,7 +163,6 @@ static ssize_t recv_msg(int sd, void **buf) {
       .msg_controllen = 0,
       .msg_flags = 0};
 
-  syslogwda(LOG_DEBUG, "checking for incoming data %s:%d ", __FILE__, __LINE__);
   fd_set readset;
   FD_ZERO(&readset);
   FD_SET(sd, &readset);
@@ -174,7 +172,6 @@ static ssize_t recv_msg(int sd, void **buf) {
   if (select_result == 0) return 0;              // no data
 
   ssize_t len = recvmsg(sd, &msg, MSG_PEEK | MSG_TRUNC | MSG_DONTWAIT); // MSG_DONTWAIT to enable non-blocking mode
-  syslogwda(LOG_DEBUG, "len: %zu\n", len);
   if (len <= 0) return len;
 
   if (len > bufsize) {
@@ -183,14 +180,12 @@ static ssize_t recv_msg(int sd, void **buf) {
     iov.iov_base = *buf;
     iov.iov_len = bufsize;
   }
-  syslogwda(LOG_DEBUG, "receiving data %s:%d ", __FILE__, __LINE__);
   len = recvmsg(sd, &msg, MSG_DONTWAIT);
-  syslogwda(LOG_DEBUG, "len: %zu\n", len);
   return len;
 }
 
 static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
-  syslogwda(LOG_INFO, "%s() %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_INFO, "%s\n", __func__);
   size_t counter = 0;
   struct nlmsghdr *nh;
 
@@ -205,10 +200,9 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
       break;
     }
 
-    syslogwda(LOG_DEBUG, "cnt: %zu\n", counter++);
-    syslogwda(LOG_DEBUG, "msg type len: %d\n", nh->nlmsg_type);
-    syslogwda(LOG_DEBUG, "NLMSG  len: %zu\n", (size_t)nh->nlmsg_len);
-    syslogwda(LOG_DEBUG, "FLAGS NLM_F_MULTI: %s\n", nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
+    syslogwda(LOG_DEBUG, "cnt: %zu msg type len: %d NLMSG len: %zu FLAGS NLM_F_MULTI: %s\n",
+              counter++, nh->nlmsg_type, (size_t)nh->nlmsg_len, 
+              nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
 
     /* The end of multipart message */
     if (nh->nlmsg_type == NLMSG_DONE) {
@@ -282,7 +276,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
 }
 
 int get_netdev(netdev_item_s *list) {
-  syslogwda(LOG_DEBUG, "%s %s:%d\n", __func__, __FILE__, __LINE__);
+  syslogwda(LOG_DEBUG, "%s\n", __func__);
   int sd;
   void *buf;
   ssize_t len;
@@ -294,7 +288,6 @@ int get_netdev(netdev_item_s *list) {
   while (status == 0) {
     len = recv_msg(sd, &buf);
     status = parse_recv_chunk(buf, len, list);
-    syslogwda(LOG_DEBUG, "%s %s:%d\n", __func__, __FILE__, __LINE__);
     free(buf);
   }
 

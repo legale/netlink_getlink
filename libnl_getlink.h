@@ -36,8 +36,16 @@ netdev_item_s *ll_get_by_index(netdev_item_s list, int index);
 void free_netdev_list(netdev_item_s *list);
 
 #ifndef syslogwda
-#define syslogwda(__pri, __fmt, ...)\
-    {syslog(__pri, __fmt, ##__VA_ARGS__); if((setlogmask(0) & LOG_MASK(__pri))){printf("%d ",getpid());printf(__fmt, ##__VA_ARGS__);}}
-#endif
+#define syslogwda(pri, fmt, ...)                                                          \
+  {                                                                                       \
+    char msg[1024];                                                                       \
+    snprintf(msg, 1024, "[%d] %s:%d: " fmt, getpid(), __FILE__, __LINE__, ##__VA_ARGS__); \
+    syslog(pri, "%s", msg);                                                               \
+    if ((setlogmask(0) & LOG_MASK(pri))) {                                                \
+      printf("%s", msg);                                                                  \
+    }                                                                                     \
+  }
+#endif /* syslogwda */
+
 
 #endif //NETLINK_GET_ADDR_LIBNL_GETLINK_H
