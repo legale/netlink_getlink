@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
+#include <sys/stat.h> // fchmod
 #include <sys/time.h> /* timeval_t struct */
 #include <sys/types.h>
 #include <syslog.h>
@@ -126,9 +126,10 @@ static int send_msg() {
     return -1;
   }
   fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+  
   // set socket nonblocking flag
-  // int flags = fcntl(sd, F_GETFL, 0);
-  // fcntl(sd, F_SETFL, flags | O_NONBLOCK);
+  int flags = fcntl(sd, F_GETFL, 0);
+  fcntl(sd, F_SETFL, flags | O_NONBLOCK);
 
   // set socket timeout 100ms
   struct timeval tv = {.tv_sec = 0, .tv_usec = 100000};
