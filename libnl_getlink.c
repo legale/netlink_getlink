@@ -26,7 +26,7 @@
   (parse_rtattr((tb), (max), RTA_DATA(rta), RTA_PAYLOAD(rta)))
 
 static int parse_rtattr_flags(struct rtattr *tb[], int max, struct rtattr *rta, int len, unsigned short flags) {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   unsigned short type;
 
   memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
@@ -48,7 +48,7 @@ static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int le
 
 /* parse netlink message */
 static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   unsigned int len = nh->nlmsg_len;              /* netlink message length including header */
   struct ifinfomsg *msg = NLMSG_DATA(nh);        /* macro to get a ptr right after header */
   uint32_t msg_len = NLMSG_LENGTH(sizeof(*msg)); /* netlink message length without header */
@@ -61,7 +61,7 @@ static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
 }
 
 static int addattr_l(struct nlmsghdr *n, unsigned int maxlen, int type, const void *data, int alen) {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   int len = RTA_LENGTH(alen);
   struct rtattr *rta;
 
@@ -83,7 +83,7 @@ int addattr32(struct nlmsghdr *n, unsigned int maxlen, int type, __u32 data) {
 }
 
 void free_netdev_list(netdev_item_s *list) {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   netdev_item_s *item, *tmp;
   list_for_each_entry_safe(item, tmp, &list->list, list) {
     free(item);
@@ -91,7 +91,7 @@ void free_netdev_list(netdev_item_s *list) {
 }
 
 netdev_item_s *ll_get_by_index(netdev_item_s list, int index) {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   netdev_item_s *tmp;
   list_for_each_entry(tmp, &list.list, list) {
     if (tmp->index == index) return tmp;
@@ -101,7 +101,7 @@ netdev_item_s *ll_get_by_index(netdev_item_s list, int index) {
 }
 
 static int send_msg() {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   ssize_t status;
   struct {
     struct nlmsghdr nlh;
@@ -126,7 +126,7 @@ static int send_msg() {
     return -1;
   }
   fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-  
+
   // set socket nonblocking flag
   int flags = fcntl(sd, F_GETFL, 0);
   fcntl(sd, F_SETFL, flags | O_NONBLOCK);
@@ -150,7 +150,7 @@ static int send_msg() {
 }
 
 static ssize_t recv_msg(int sd, void **buf) {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   ssize_t bufsize = 512;
   *buf = malloc(bufsize);
   struct iovec iov = {.iov_base = *buf, .iov_len = bufsize};
@@ -186,7 +186,7 @@ static ssize_t recv_msg(int sd, void **buf) {
 }
 
 static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
-  syslog2(LOG_INFO, "%s\n", __func__);
+  // syslog2(LOG_INFO, "%s\n", __func__);
   size_t counter = 0;
   struct nlmsghdr *nh;
 
@@ -201,25 +201,23 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
       break;
     }
 
-    syslog2(LOG_DEBUG, "cnt: %zu msg type len: %d NLMSG len: %zu FLAGS NLM_F_MULTI: %s\n",
-              counter++, nh->nlmsg_type, (size_t)nh->nlmsg_len, 
-              nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
+    // syslog2(LOG_DEBUG, "cnt: %zu msg type len: %d NLMSG len: %zu FLAGS NLM_F_MULTI: %s\n", counter++, nh->nlmsg_type, (size_t)nh->nlmsg_len, nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
 
     /* The end of multipart message */
     if (nh->nlmsg_type == NLMSG_DONE) {
-      syslog2(LOG_DEBUG, "NLMSG_DONE\n");
+      // syslog2(LOG_DEBUG, "NLMSG_DONE\n");
       return -1;
     }
 
     /* Error handling */
     if (nh->nlmsg_type == NLMSG_ERROR) {
-      syslog2(LOG_DEBUG, "NLMSG_ERROR\n");
+      // syslog2(LOG_DEBUG, "NLMSG_ERROR\n");
       continue;
     }
 
     struct rtattr *tb[IFLA_MAX + 1] = {0};
     ssize_t nlmsg_len = parse_nlbuf(nh, tb);
-    syslog2(LOG_INFO, "parsed nlmsg_len: %zd\n", nlmsg_len);
+    // syslog2(LOG_INFO, "parsed nlmsg_len: %zd\n", nlmsg_len);
 
     netdev_item_s *dev = NULL;
     struct ifinfomsg *msg = NLMSG_DATA(nh); /* macro to get a ptr right after header */
@@ -270,14 +268,14 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
 
     if (dev) list_add_tail(&dev->list, &list->list); // append dev to list tail
 
-    syslog2(LOG_DEBUG, "FLAGS NLM_F_MULTI: %s\n", nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
+    // syslog2(LOG_DEBUG, "FLAGS NLM_F_MULTI: %s\n", nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
   }
 
   return 0;
 }
 
 int get_netdev(netdev_item_s *list) {
-  syslog2(LOG_DEBUG, "%s\n", __func__);
+  // syslog2(LOG_DEBUG, "%s\n", __func__);
   int sd;
   void *buf;
   ssize_t len;
