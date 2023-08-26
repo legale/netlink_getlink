@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "libnl_getlink.h"
+#include "syslog.h"
 
 #include "leak_detector_c.h"
 
@@ -116,13 +117,13 @@ static int send_msg() {
   };
   int err = addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF);
   if (err) {
-    syslog2(LOG_NOTICE, "error: %s addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF)\n", strerror(errno));
+    syslog2(LOG_NOTICE, "%s addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF)\n", strerror(errno));
     return -1;
   }
 
   int sd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE); /* open socket */
   if (sd < 0) {
-    syslog2(LOG_NOTICE, "error: %s socket()\n", strerror(errno));
+    syslog2(LOG_NOTICE, "%s socket()\n", strerror(errno));
     return -1;
   }
   fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -142,7 +143,7 @@ static int send_msg() {
   status = send(sd, &req, req.nlh.nlmsg_len, 0);
   if (status < 0) {
     status = errno;
-    syslog2(LOG_NOTICE, "error: %s send()\n", strerror(errno));
+    syslog2(LOG_NOTICE, "%s send()\n", strerror(errno));
     close(sd); /* close socket */
     return -1;
   }
@@ -197,7 +198,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
 
   for (nh = (struct nlmsghdr *)buf; NLMSG_OK(nh, len); nh = NLMSG_NEXT(nh, len)) {
     if (counter > 100) {
-      syslog2(LOG_ALERT, "error: counter %zu > 100\n", counter);
+      syslog2(LOG_ALERT, "counter %zu > 100\n", counter);
       break;
     }
 
@@ -230,7 +231,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
     if (!dev) {
       dev = calloc(1, sizeof(netdev_item_s));
       if (!dev) {
-        syslog2(LOG_ALERT, "error: Failed to allocate memory for netdev_item_s.\n");
+        syslog2(LOG_ALERT, "Failed to allocate memory for netdev_item_s.\n");
         return -1;
       }
     }

@@ -10,7 +10,9 @@ make
 Binary is in the build directory
 
 ## Howto use
-### static
-`build/getlink` or `build/getlink_static`
-### shared
-`LD_LIBRARY_PATH=build build/getlink_shared`
+`make` and run `./build/getlink_shared`
+
+or make with leakcheck `make LEAKCHECK=1`
+run `./build/getlink_shared` and check
+leakcheck report `cat /tmp/leak_info.txt`
+
