@@ -217,8 +217,9 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
     }
 
     struct rtattr *tb[IFLA_MAX + 1] = {0};
-    ssize_t nlmsg_len = parse_nlbuf(nh, tb);
-    // syslog2(LOG_INFO, "parsed nlmsg_len: %zd\n", nlmsg_len);
+		(void)parse_nlbuf(nh, tb);
+    //ssize_t nlmsg_len = parse_nlbuf(nh, tb);
+		//syslog2(LOG_INFO, "parsed nlmsg_len: %zd\n", nlmsg_len);
 
     netdev_item_s *dev = NULL;
     struct ifinfomsg *msg = NLMSG_DATA(nh); /* macro to get a ptr right after header */
