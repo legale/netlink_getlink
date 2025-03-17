@@ -169,9 +169,18 @@ static ssize_t recv_msg(int sd, void **buf) {
   FD_ZERO(&readset);
   FD_SET(sd, &readset);
   struct timeval timeout = {.tv_sec = 1, .tv_usec = 0}; // 1 sec. timeout
-  int select_result = select(sd + 1, &readset, NULL, NULL, &timeout);
-  if (select_result == -1) return select_result; // error
-  if (select_result == 0) return 0;              // no data
+  int ret = select(sd + 1, &readset, NULL, NULL, &timeout);
+  if (ret == 0) {
+    return ret;
+  } else if (ret < 0) {
+    if (errno == EINTR) {
+      syslog2(LOG_WARNING, "select EINTR");
+      return ret;
+    }
+    syslog2(LOG_ERR, "select error=%s", strerror(errno));
+    return ret;
+  }
+
 
   ssize_t len = recvmsg(sd, &msg, MSG_PEEK | MSG_TRUNC | MSG_DONTWAIT); // MSG_DONTWAIT to enable non-blocking mode
   if (len <= 0) return len;
