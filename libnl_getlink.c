@@ -27,7 +27,7 @@
   (parse_rtattr((tb), (max), RTA_DATA(rta), RTA_PAYLOAD(rta)))
 
 static int parse_rtattr_flags(struct rtattr *tb[], int max, struct rtattr *rta, int len, unsigned short flags) {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   unsigned short type;
 
   memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
@@ -49,7 +49,7 @@ static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int le
 
 /* parse netlink message */
 static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   unsigned int len = nh->nlmsg_len;              /* netlink message length including header */
   struct ifinfomsg *msg = NLMSG_DATA(nh);        /* macro to get a ptr right after header */
   uint32_t msg_len = NLMSG_LENGTH(sizeof(*msg)); /* netlink message length without header */
@@ -62,7 +62,7 @@ static ssize_t parse_nlbuf(struct nlmsghdr *nh, struct rtattr **tb) {
 }
 
 static int addattr_l(struct nlmsghdr *n, unsigned int maxlen, int type, const void *data, int alen) {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   int len = RTA_LENGTH(alen);
   struct rtattr *rta;
 
@@ -84,7 +84,7 @@ int addattr32(struct nlmsghdr *n, unsigned int maxlen, int type, __u32 data) {
 }
 
 void free_netdev_list(netdev_item_s *list) {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   netdev_item_s *item, *tmp;
   list_for_each_entry_safe(item, tmp, &list->list, list) {
     free(item);
@@ -92,7 +92,7 @@ void free_netdev_list(netdev_item_s *list) {
 }
 
 netdev_item_s *ll_get_by_index(netdev_item_s list, int index) {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   netdev_item_s *tmp;
   list_for_each_entry(tmp, &list.list, list) {
     if (tmp->index == index) return tmp;
@@ -102,7 +102,7 @@ netdev_item_s *ll_get_by_index(netdev_item_s list, int index) {
 }
 
 static int send_msg() {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   ssize_t status;
   struct {
     struct nlmsghdr nlh;
@@ -151,7 +151,7 @@ static int send_msg() {
 }
 
 static ssize_t recv_msg(int sd, void **buf) {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   ssize_t bufsize = 512;
   *buf = malloc(bufsize);
   struct iovec iov = {.iov_base = *buf, .iov_len = bufsize};
@@ -196,7 +196,7 @@ static ssize_t recv_msg(int sd, void **buf) {
 }
 
 static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
-  // syslog2(LOG_INFO, "%s", __func__);
+  // FUNC_START_DEBUG;
   size_t counter = 0;
   struct nlmsghdr *nh;
 
