@@ -1,4 +1,4 @@
-#include "list.h"
+#include "slist.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -83,19 +83,23 @@ int addattr32(struct nlmsghdr *n, unsigned int maxlen, int type, __u32 data) {
   return addattr_l(n, maxlen, type, &data, sizeof(__u32));
 }
 
-void free_netdev_list(netdev_item_s *list) {
+void free_netdev_list(struct slist_head *list) {
   FUNC_START_DEBUG;
-  netdev_item_s *item, *tmp;
-  list_for_each_entry_safe(item, tmp, &list->list, list) {
+  netdev_item_t *item = NULL;
+  netdev_item_t *tmp = NULL;
+
+  slist_for_each_entry_safe(item, tmp, list, list) {
+    // Вместо item->next нужно передавать &item->list
+    slist_del_node(&item->list, list);
     free(item);
   }
 }
 
-netdev_item_s *ll_get_by_index(netdev_item_s list, int index) {
+netdev_item_t *ll_get_by_index(struct slist_head *list, int index) {
   // FUNC_START_DEBUG;
-  netdev_item_s *tmp;
-  list_for_each_entry(tmp, &list.list, list) {
-    if (tmp->index == index) return tmp;
+  netdev_item_t *item;
+  slist_for_each_entry(item, list, list) {
+    if (item->index == index) return item;
   }
 
   return NULL;
@@ -194,7 +198,7 @@ static ssize_t recv_msg(int sd, void **buf) {
   return len;
 }
 
-static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
+static int parse_recv_chunk(void *buf, ssize_t len, struct slist_head *list) {
   // FUNC_START_DEBUG;
   size_t counter = 0;
   struct nlmsghdr *nh;
@@ -229,7 +233,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
     // ssize_t nlmsg_len = parse_nlbuf(nh, tb);
     // syslog2(LOG_INFO, "parsed nlmsg_len: %zd", nlmsg_len);
 
-    netdev_item_s *dev = NULL;
+    netdev_item_t *dev = NULL;
     struct ifinfomsg *msg = NLMSG_DATA(nh); /* macro to get a ptr right after header */
     /* skip loopback device and other non ARPHRD_ETHER */
 
@@ -238,7 +242,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
     }
 
     if (!dev) {
-      dev = calloc(1, sizeof(netdev_item_s));
+      dev = calloc(1, sizeof(netdev_item_t));
       if (!dev) {
         syslog2(LOG_ALERT, "Failed to allocate memory for netdev_item_s.");
         return -1;
@@ -253,7 +257,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
 
       if (linkinfo[IFLA_INFO_KIND]) {
         memcpy(dev->kind, RTA_DATA(linkinfo[IFLA_INFO_KIND]), IFNAMSIZ);
-        if(strcmp("bridge", dev->kind) == 0) dev->is_bridge = true;
+        if (strcmp("bridge", dev->kind) == 0) dev->is_bridge = true;
       }
     }
 
@@ -277,7 +281,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
       memcpy((void *)&dev->ll_addr, RTA_DATA(tb[IFLA_ADDRESS]), IFHWADDRLEN);
     }
 
-    if (dev) list_add_tail(&dev->list, &list->list); // append dev to list tail
+    if (dev) slist_add_tail(&dev->list, list); // append dev to list tail
 
     // syslog2(LOG_DEBUG, "FLAGS NLM_F_MULTI: %s", nh->nlmsg_flags & NLM_F_MULTI ? "true" : "false");
   }
@@ -285,7 +289,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
   return 0;
 }
 
-int get_netdev(netdev_item_s *list) {
+int get_netdev(struct slist_head *list) {
   FUNC_START_DEBUG;
   int sd;
   void *buf;

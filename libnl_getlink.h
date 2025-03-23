@@ -13,12 +13,13 @@
 #include <syslog.h>      // syslog()
 #include <unistd.h>      // syscall()
 
-#include "list.h"
+#include "slist.h"
 
 #define NLMSG_TAIL(nmsg) \
   ((struct rtattr *)(((void *)(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
 
 typedef struct netdev_item {
+  struct slist_node list;
   int index;
   int master_idx;              /* master device */
   int ifla_link_idx;       /* ifla_link index */
@@ -26,16 +27,15 @@ typedef struct netdev_item {
   bool is_bridge;
   char name[IFNAMSIZ + 1];
   uint8_t ll_addr[IFHWADDRLEN];
-  struct list_head list;
-} netdev_item_s;
+} netdev_item_t;
 
 typedef struct nl_req {
   struct nlmsghdr hdr;
   struct rtgenmsg gen;
 } nl_req_s;
 
-int get_netdev(netdev_item_s *list);
-netdev_item_s *ll_get_by_index(netdev_item_s list, int index);
-void free_netdev_list(netdev_item_s *list);
+int get_netdev(struct slist_head *list);
+netdev_item_t *ll_get_by_index(struct slist_head *list, int index);
+void free_netdev_list(struct slist_head *list);
 
 #endif // NETLINK_GET_ADDR_LIBNL_GETLINK_H
