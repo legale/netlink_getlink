@@ -84,7 +84,7 @@ int addattr32(struct nlmsghdr *n, unsigned int maxlen, int type, __u32 data) {
 }
 
 void free_netdev_list(netdev_item_s *list) {
-  // FUNC_START_DEBUG;
+  FUNC_START_DEBUG;
   netdev_item_s *item, *tmp;
   list_for_each_entry_safe(item, tmp, &list->list, list) {
     free(item);
@@ -117,13 +117,13 @@ static int send_msg() {
   };
   int err = addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF);
   if (err) {
-    syslog2(LOG_NOTICE, "%s addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF)", strerror(errno));
+    syslog2(LOG_ERR, "%s addattr32(&req.nlh, sizeof(req), IFLA_EXT_MASK, RTEXT_FILTER_VF)", strerror(errno));
     return -1;
   }
 
   int sd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE); /* open socket */
   if (sd < 0) {
-    syslog2(LOG_NOTICE, "%s socket()", strerror(errno));
+    syslog2(LOG_ERR, "%s socket()", strerror(errno));
     return -1;
   }
   fchmod(sd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
@@ -181,7 +181,6 @@ static ssize_t recv_msg(int sd, void **buf) {
     return ret;
   }
 
-
   ssize_t len = recvmsg(sd, &msg, MSG_PEEK | MSG_TRUNC | MSG_DONTWAIT); // MSG_DONTWAIT to enable non-blocking mode
   if (len <= 0) return len;
 
@@ -226,9 +225,9 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
     }
 
     struct rtattr *tb[IFLA_MAX + 1] = {0};
-		(void)parse_nlbuf(nh, tb);
-    //ssize_t nlmsg_len = parse_nlbuf(nh, tb);
-		//syslog2(LOG_INFO, "parsed nlmsg_len: %zd", nlmsg_len);
+    (void)parse_nlbuf(nh, tb);
+    // ssize_t nlmsg_len = parse_nlbuf(nh, tb);
+    // syslog2(LOG_INFO, "parsed nlmsg_len: %zd", nlmsg_len);
 
     netdev_item_s *dev = NULL;
     struct ifinfomsg *msg = NLMSG_DATA(nh); /* macro to get a ptr right after header */
@@ -254,6 +253,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
 
       if (linkinfo[IFLA_INFO_KIND]) {
         memcpy(dev->kind, RTA_DATA(linkinfo[IFLA_INFO_KIND]), IFNAMSIZ);
+        if(strcmp("bridge", dev->kind) == 0) dev->is_bridge = true;
       }
     }
 
@@ -269,7 +269,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
     }
 
     if (tb[IFLA_MASTER]) {
-      dev->master = *(uint32_t *)RTA_DATA(tb[IFLA_MASTER]);
+      dev->master_idx = *(uint32_t *)RTA_DATA(tb[IFLA_MASTER]);
     }
 
     /* mac */
@@ -286,7 +286,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, netdev_item_s *list) {
 }
 
 int get_netdev(netdev_item_s *list) {
-  // syslog2(LOG_DEBUG, "%s", __func__);
+  FUNC_START_DEBUG;
   int sd;
   void *buf;
   ssize_t len;
