@@ -39,14 +39,18 @@ extern int cached_mask;
 
 int setlogmask2(int log_level);
 void setup_syslog2(int log_level, bool set_log_syslog);
-void syslog2_(int pri, const char *filename, int line, const char *fmt, ...);
+void syslog2_(int pri, const char *filename, int line, const char *fmt, bool add_nl, ...);
 void syslog2_printf_(int pri, const char *filename, int line, const char *fmt, ...);
 int clock_gettime_fast(struct timespec *ts, bool coarse);
 
 #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #ifndef syslog2
-#define syslog2(pri, fmt, ...) syslog2_(pri, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
+#define syslog2(pri, fmt, ...) syslog2_(pri, __FILENAME__, __LINE__, fmt, true, ##__VA_ARGS__)
+#endif // syslog2
+
+#ifndef syslog2_nonl
+#define syslog2_nonl(pri, fmt, ...) syslog2_(pri, __FILENAME__, __LINE__, fmt, false, ##__VA_ARGS__)
 #endif // syslog2
 
 #ifndef syslog2_printf

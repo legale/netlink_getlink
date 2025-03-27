@@ -85,7 +85,7 @@ static void get_current_time(struct timespec *ts, struct tm *tm_info) {
   }
 }
 
-void syslog2_(int pri, const char *filename, int line, const char *fmt, ...) {
+void syslog2_(int pri, const char *filename, int line, const char *fmt, bool add_nl, ...) {
   if (!(cached_mask & LOG_MASK(pri))) return;
 
   char msg[32768];
@@ -95,23 +95,33 @@ void syslog2_(int pri, const char *filename, int line, const char *fmt, ...) {
   pid_t tid = syscall(SYS_gettid);
 
   va_list args;
-  va_start(args, fmt);
+  va_start(args, add_nl);
   vsnprintf(msg, sizeof(msg), fmt, args);
   va_end(args);
 
   if (likely(log_syslog)) {
-    syslog(pri, "[%d] %s:%d: %s", tid, filename, line, msg);
+    if (add_nl) {
+      syslog(pri, "[%d] %s:%d: %s\n", tid, filename, line, msg);
+    } else {
+      syslog(pri, "[%d] %s:%d: %s", tid, filename, line, msg);
+    }
   } else {
     char timebuf[64];
     get_current_time(&ts, &tm_info);
     sprintf(timebuf, "%02d-%02d-%02d %02d:%02d:%02d.%03ld",
             tm_info.tm_mday, tm_info.tm_mon + 1, tm_info.tm_year + 1900,
             tm_info.tm_hour, tm_info.tm_min, tm_info.tm_sec, ts.tv_nsec / 1000000);
-    printf("[%s] %s [%d] %s:%d: %s\n", timebuf, strprio(pri), tid, filename, line, msg);
+    if (add_nl) {
+      printf("[%s] %s [%d] %s:%d: %s\n", timebuf, strprio(pri), tid, filename, line, msg);
+    } else {
+      printf("[%s] %s [%d] %s:%d: %s", timebuf, strprio(pri), tid, filename, line, msg);
+    }
   }
 }
 
 void syslog2_printf_(int pri, const char *filename, int line, const char *fmt, ...) {
+  (void)filename;
+  (void)line;
   if (!(cached_mask & LOG_MASK(pri))) return;
 
   char msg[32768];
