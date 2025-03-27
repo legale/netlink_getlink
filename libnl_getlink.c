@@ -5,7 +5,6 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <linux/types.h>
-#include <net/if.h>
 #include <net/if_arp.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -278,7 +277,7 @@ static int parse_recv_chunk(void *buf, ssize_t len, struct slist_head *list) {
 
     /* mac */
     if (tb[IFLA_ADDRESS]) {
-      memcpy((void *)&dev->ll_addr, RTA_DATA(tb[IFLA_ADDRESS]), IFHWADDRLEN);
+      memcpy((void *)&dev->ll_addr, RTA_DATA(tb[IFLA_ADDRESS]), ETH_ALEN);
     }
 
     if (dev) slist_add_tail(&dev->list, list); // append dev to list tail

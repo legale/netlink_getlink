@@ -3,7 +3,6 @@
 
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <net/if.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -14,6 +13,14 @@
 #include <unistd.h>      // syscall()
 
 #include "slist.h"
+
+#ifndef IFNAMSIZ
+#define IFNAMSIZ 16
+#endif
+
+#ifndef ETH_ALEN
+#define ETH_ALEN 6
+#endif
 
 #define NLMSG_TAIL(nmsg) \
   ((struct rtattr *)(((void *)(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
@@ -26,7 +33,7 @@ typedef struct netdev_item {
   char kind[IFNAMSIZ + 1]; /* vlan, bridge, etc. IFLA_INFO_KIND nested in rtattr IFLA_LINKINFO  */
   bool is_bridge;
   char name[IFNAMSIZ + 1];
-  uint8_t ll_addr[IFHWADDRLEN];
+  uint8_t ll_addr[ETH_ALEN];
 } netdev_item_t;
 
 typedef struct nl_req {
