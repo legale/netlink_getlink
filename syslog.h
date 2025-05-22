@@ -13,6 +13,8 @@
 #include <time.h>        // struct timespec
 #include <unistd.h>      // syscall()
 
+#include "pthread.h" //SET_CURRENT_FUNCTION
+
 // global cached mask value
 extern int cached_mask;
 
@@ -29,32 +31,33 @@ extern int cached_mask;
 #endif
 
 #ifndef FUNC_START_DEBUG
-#define FUNC_START_DEBUG                       \
-  do {                                         \
-    if ((cached_mask & LOG_MASK(LOG_DEBUG))) { \
-      syslog2(LOG_DEBUG, "%s", __func__);      \
-    }                                          \
+#define FUNC_START_DEBUG                      \
+  do {                                        \
+    if ((cached_mask & LOG_MASK(LOG_INFO))) { \
+      syslog2(LOG_INFO, "");                  \
+    }                                         \
   } while (0)
 #endif
 
 int setlogmask2(int log_level);
 void setup_syslog2(int log_level, bool set_log_syslog);
-void syslog2_(int pri, const char *filename, int line, const char *fmt, bool add_nl, ...);
-void syslog2_printf_(int pri, const char *filename, int line, const char *fmt, ...);
+void syslog2_(int pri, const char *func, const char *filename, int line, const char *fmt, bool add_nl, ...);
+void syslog2_printf_(int pri, const char *func, const char *filename, int line, const char *fmt, ...);
 int clock_gettime_fast(struct timespec *ts, bool coarse);
+void debug(const char *fmt, ...);
 
 #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #ifndef syslog2
-#define syslog2(pri, fmt, ...) syslog2_(pri, __FILENAME__, __LINE__, fmt, true, ##__VA_ARGS__)
+#define syslog2(pri, fmt, ...) syslog2_(pri, __func__, __FILENAME__, __LINE__, fmt, true, ##__VA_ARGS__)
 #endif // syslog2
 
 #ifndef syslog2_nonl
-#define syslog2_nonl(pri, fmt, ...) syslog2_(pri, __FILENAME__, __LINE__, fmt, false, ##__VA_ARGS__)
+#define syslog2_nonl(pri, fmt, ...) syslog2_(pri, __func__, __FILENAME__, __LINE__, fmt, false, ##__VA_ARGS__)
 #endif // syslog2
 
 #ifndef syslog2_printf
-#define syslog2_printf(pri, fmt, ...) syslog2_printf_(pri, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
+#define syslog2_printf(pri, fmt, ...) syslog2_printf_(pri, __func__, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
 #endif // syslog2_printf
 
 #endif /* SYSLOG2_H_ */

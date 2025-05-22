@@ -85,7 +85,7 @@ static void get_current_time(struct timespec *ts, struct tm *tm_info) {
   }
 }
 
-void syslog2_(int pri, const char *filename, int line, const char *fmt, bool add_nl, ...) {
+void syslog2_(int pri, const char *func, const char *filename, int line, const char *fmt, bool add_nl, ...) {
   if (!(cached_mask & LOG_MASK(pri))) return;
 
   char msg[32768];
@@ -101,9 +101,9 @@ void syslog2_(int pri, const char *filename, int line, const char *fmt, bool add
 
   if (likely(log_syslog)) {
     if (add_nl) {
-      syslog(pri, "[%d] %s:%d: %s\n", tid, filename, line, msg);
+      syslog(pri, "[%d] %s:%d: %s: %s\n", tid, filename, line, func, msg);
     } else {
-      syslog(pri, "[%d] %s:%d: %s", tid, filename, line, msg);
+      syslog(pri, "[%d] %s:%d: %s: %s", tid, filename, line, func, msg);
     }
   } else {
     char timebuf[64];
@@ -112,15 +112,16 @@ void syslog2_(int pri, const char *filename, int line, const char *fmt, bool add
             tm_info.tm_mday, tm_info.tm_mon + 1, tm_info.tm_year + 1900,
             tm_info.tm_hour, tm_info.tm_min, tm_info.tm_sec, ts.tv_nsec / 1000000);
     if (add_nl) {
-      printf("[%s] %s [%d] %s:%d: %s\n", timebuf, strprio(pri), tid, filename, line, msg);
+      printf("[%s] %s [%d] %s:%d: %s: %s\n", timebuf, strprio(pri), tid, filename, line, func, msg);
     } else {
-      printf("[%s] %s [%d] %s:%d: %s", timebuf, strprio(pri), tid, filename, line, msg);
+      printf("[%s] %s [%d] %s:%d: %s: %s", timebuf, strprio(pri), tid, filename, line, func, msg);
     }
   }
 }
 
-void syslog2_printf_(int pri, const char *filename, int line, const char *fmt, ...) {
+void syslog2_printf_(int pri, const char *func, const char *filename, int line, const char *fmt, ...) {
   (void)filename;
+  (void)func;
   (void)line;
   if (!(cached_mask & LOG_MASK(pri))) return;
 
@@ -136,4 +137,14 @@ void syslog2_printf_(int pri, const char *filename, int line, const char *fmt, .
   } else {
     printf("%s", msg);
   }
+}
+
+void debug(const char *fmt, ...) {
+#ifdef DEBUG
+  char str[256];
+  va_list ap;
+  va_start(ap, fmt);
+  vprintf(fmt, ap);
+  va_end(ap);
+#endif
 }

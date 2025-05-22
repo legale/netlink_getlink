@@ -73,7 +73,7 @@ static void free_netdev_list3(struct slist_head *list) {
 }
 
 int main() {
-  setup_syslog2(LOG_DEBUG, false);
+  setup_syslog2(LOG_NOTICE, false);
 
   struct slist_head list;
   INIT_SLIST_HEAD(&list);
